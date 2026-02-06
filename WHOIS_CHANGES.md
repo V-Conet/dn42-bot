@@ -138,8 +138,7 @@ All changes have been tested with:
 
 On first deployment, the registry will be cloned automatically:
 1. Background thread starts on module import
-2. Attempts to clone from `https://git.dn42.dev/dn42/registry.git`
-3. Falls back to GitHub mirror if primary unavailable
+2. Attempts to clone from `https://git.origami.pub/Bingxin/dn42-registry.git`
 4. Shallow clone (`--depth 1`) to save space
 5. Takes 1-2 minutes depending on connection speed
 

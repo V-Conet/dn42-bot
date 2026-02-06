@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional, Dict, List
 
 # Registry configuration
-REGISTRY_URL = "https://git.pysio.online/pysio/mirrors-dn42"
+REGISTRY_URL = "https://git.origami.pub/Bingxin/dn42-registry.git"
 CACHE_DIR = "./cache"
 REGISTRY_PATH = os.path.join(CACHE_DIR, "registry")
 
@@ -36,6 +36,27 @@ def ensure_registry_cloned() -> bool:
         os.makedirs(CACHE_DIR, exist_ok=True)
         
         if os.path.exists(REGISTRY_PATH) and os.path.isdir(os.path.join(REGISTRY_PATH, ".git")):
+            # Check if the remote URL matches the expected one; fix if outdated
+            try:
+                remote_result = subprocess.run(
+                    ["git", "-C", REGISTRY_PATH, "remote", "get-url", "origin"],
+                    capture_output=True,
+                    timeout=10,
+                    text=True
+                )
+                current_url = remote_result.stdout.strip() if remote_result.returncode == 0 else ""
+                if current_url != REGISTRY_URL:
+                    print(f"Registry remote URL mismatch: {current_url} -> {REGISTRY_URL}")
+                    subprocess.run(
+                        ["git", "-C", REGISTRY_PATH, "remote", "set-url", "origin", REGISTRY_URL],
+                        capture_output=True,
+                        timeout=10,
+                        text=True
+                    )
+                    print("Registry remote URL updated successfully.")
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError) as e:
+                print(f"Warning: failed to check/update remote URL: {e}")
+
             # Repository already exists, try to update it
             try:
                 result = subprocess.run(
@@ -48,8 +69,22 @@ def ensure_registry_cloned() -> bool:
                     return True
                 else:
                     print(f"Failed to update registry: {result.stderr}")
-                    # Continue to use existing repository even if update fails
-                    return True
+                    # If pull fails (e.g. history diverged after remote change), re-clone
+                    print("Re-cloning registry due to update failure...")
+                    import shutil
+                    shutil.rmtree(REGISTRY_PATH)
+                    clone_result = subprocess.run(
+                        ["git", "clone", "--depth", "1", REGISTRY_URL, REGISTRY_PATH],
+                        capture_output=True,
+                        timeout=120,
+                        text=True
+                    )
+                    if clone_result.returncode == 0:
+                        print("Successfully re-cloned DN42 registry.")
+                        return True
+                    else:
+                        print(f"Re-clone failed: {clone_result.stderr}")
+                        return False
             except (subprocess.TimeoutExpired, subprocess.SubprocessError) as e:
                 print(f"Error updating registry: {e}")
                 # Continue to use existing repository
