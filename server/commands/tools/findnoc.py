@@ -135,49 +135,69 @@ def get_noc_emails(asn):
         return set()
 
 
-@bot.message_handler(commands=["findnoc"])
-def findnoc(message):
-    """处理 /findnoc 命令，查找 ASN 的 NOC 信息"""
-    if len(message.text.split()) < 2:
-        bot.reply_to(
-            message,
-            "Usage: /findnoc [ASN]\n用法：/findnoc [ASN]",
-            reply_markup=tools.gen_peer_me_markup(message),
-        )
-        return
-    
-    raw_asn = message.text.split()[1]
-    
-    # 提取并标准化 ASN
+def _lookup_single_asn(raw_asn):
+    """
+    查询单个 ASN 的 NOC 信息。
+
+    Args:
+        raw_asn: 用户输入的原始 ASN 字符串
+
+    Returns:
+        str: 格式化的查询结果，如果 ASN 无效则返回错误提示
+    """
     asn = tools.extract_asn(raw_asn)
-    
+
     if not asn:
-        bot.reply_to(
-            message,
-            "Invalid ASN or ASN not found in DN42 registry.\nASN 无效或在 DN42 注册表中未找到。",
-            reply_markup=tools.gen_peer_me_markup(message),
-        )
-        return
-    
+        return f"ASN: {raw_asn}\nError: Invalid ASN or not found / ASN 无效或未找到"
+
     # 获取 ASN 名称
     asn_name = get_asn_name(asn)
     if not asn_name:
         asn_name = "Unknown"
-    
+
     # 获取 email 列表
     emails = get_noc_emails(asn)
-    
+
     if emails:
         email_text = "\n".join(f"Email: {email}" for email in sorted(emails))
     else:
         email_text = "Email: Not found / 未找到"
-    
-    result = (
+
+    return (
         f"ASN: AS{asn}\n"
         f"ASN Name: {asn_name}\n"
         f"{email_text}"
     )
-    
+
+
+@bot.message_handler(commands=["findnoc"])
+def findnoc(message):
+    """处理 /findnoc 命令，查找一个或多个 ASN 的 NOC 信息"""
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(
+            message,
+            "Usage: /findnoc [ASN1] [ASN2] ...\n用法：/findnoc [ASN]",
+            reply_markup=tools.gen_peer_me_markup(message),
+        )
+        return
+
+    raw_asns = parts[1:]
+
+    # 限制单次查询数量，防止滥用
+    MAX_ASNS = 10
+    if len(raw_asns) > MAX_ASNS:
+        bot.reply_to(
+            message,
+            f"Too many ASNs. Maximum {MAX_ASNS} per query.\n"
+            f"ASN 数量过多，单次最多查询 {MAX_ASNS} 个。",
+            reply_markup=tools.gen_peer_me_markup(message),
+        )
+        return
+
+    results = [_lookup_single_asn(raw_asn) for raw_asn in raw_asns]
+    result = "\n\n".join(results)
+
     bot.reply_to(
         message,
         result,

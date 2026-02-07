@@ -112,8 +112,7 @@ print(f"Found {len(all_asns)} ASNs in registry")
 The registry module uses these configuration values:
 
 ```python
-REGISTRY_URL = "https://git.dn42.dev/dn42/registry.git"  # Primary source
-REGISTRY_URL_FALLBACK = "https://github.com/dn42/registry.git"  # Fallback (if exists)
+REGISTRY_URL = "https://git.origami.pub/Bingxin/dn42-registry.git"  # Primary source
 CACHE_DIR = "./cache"  # Cache directory
 REGISTRY_PATH = "./cache/registry"  # Registry clone location
 ```
